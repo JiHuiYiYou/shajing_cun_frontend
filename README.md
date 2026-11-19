@@ -153,4 +153,15 @@ H3-Image **没有 seed**：同一 prompt 重跑结果不同。所以每一步都
 - **碰撞盒**由识别出的院落框内缩而成，比屋子略小：走起来有时会蹭到屋檐。
 - **主角只有一张立绘**，朝左靠翻转，没有四向行走图。
 - **单文件版是轻量版**：没有主图与立绘，看的是总览与剪影。
-# shajing_cun_frontend
+
+## 部署
+
+push 到 `main` 即上线：`.github/workflows/pages.yml` 把站点打包后交给 GitHub Pages。
+
+站点就是「根目录那个页面 + `assets/`」，没有构建步骤——
+`沙井村前端.html` 搬名为 `index.html` 交给 Pages，其余原样。
+
+线上地址：<https://jihuiyiyou.github.io/shajing_cun_frontend/>
+
+改过文案要**先重跑 `tools/subset_fonts.py` 再提交**：
+字体是按本页实际用字裁的，少一个字就是一处豆腐块。

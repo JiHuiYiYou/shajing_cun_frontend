@@ -1,0 +1,11 @@
+# 出图管线的中间件与缓存：断了能重跑再生，不进版本库
+tools/mapgen/work/
+tools/shots/
+
+# 源字体（思源宋体 SC，OFL 1.1，23 MB）：按需从 Google Fonts 取回后重跑
+# tools/subset_fonts.py 即可，裁切产物在 assets/fonts/ 里，那个是要进库的
+tools/fontsrc/*.otf
+
+# Python 缓存
+__pycache__/
+*.pyc

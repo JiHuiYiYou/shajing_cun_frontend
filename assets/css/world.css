@@ -1,0 +1,302 @@
+/* ============================================================
+   沙井村 · 舆图 — 世界层样式
+   这里管的是「一张图变成一个能走的地方」：
+   相机变换的一层、瓦片、人物、名牌、提示、缩略图。
+
+   分层记法
+     .world      唯一挂相机变换的一层（transform 写在这里）
+     #tileLayer  舆图瓦片，在 .world 里，跟着图一起动
+     #figLayer   人物立绘，在 .world 里，跟着图一起动
+     #tagLayer   名牌，在屏幕空间（缩到最小字也不糊）
+     #prompt     接近提示，屏幕空间
+   ============================================================ */
+
+/* ---------- 世界容器 ---------- */
+.world{
+  position:absolute;left:0;top:0;
+  width:6144px;height:4080px;   /* 由 world.js 按 SITES.world 覆写 */
+  transform-origin:0 0;
+  will-change:transform;
+  view-transition-name:none;     /* 别让整张图进 startViewTransition 的快照 */
+  --iz:1;
+}
+/* 舆图本体：铺满世界，不留白也不拉伸。
+   （旧 .plate 的 cover / 半透明 / 降饱和 是给静态底图用的，这里要盖掉） */
+.plate{
+  position:absolute;left:0;top:0;width:100%;height:100%;
+  display:block;user-select:none;pointer-events:none;
+  object-fit:fill;object-position:50% 50%;opacity:1;filter:none;
+}
+.layer{position:absolute;inset:0;z-index:6}
+#figLayer{z-index:8;pointer-events:none}
+#actorLayer{z-index:9;pointer-events:none}
+#figLayer > *,#actorLayer > *{pointer-events:auto}
+
+/* ---------- 瓦片 ---------- */
+/* ---------- 人物 ---------- */
+.ent{
+  position:absolute;left:0;top:0;
+  transform-origin:50% 100%;
+  will-change:transform;
+  cursor:pointer;
+}
+/* 户标记沿用旧名 .mk（巡检脚本靠它定位），但旧样式是圆牌徽记，
+   套到立绘身上会多出一个圆底盘，还带着自己的入场动画会把位置顶掉。
+   这里把它抹平。 */
+.ent.mk{
+  width:auto;height:auto;border:0;background:none;box-shadow:none;
+  border-radius:0;padding:0;animation:none;
+}
+.ent.mk:hover{transform:none;box-shadow:none}
+.ent-portrait{
+  display:block;height:86px;width:auto;
+  filter:drop-shadow(0 4px 5px rgba(60,44,18,.34));
+}
+.ent--player .ent-portrait{height:112px}
+/* 主角脚下一圈朱砂，免得在满村屋顶里找不着自己 */
+.ent--player::after{
+  content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);
+  width:34px;height:12px;border-radius:50%;
+  border:1.5px solid var(--seal);opacity:.85;
+}
+.ent--villager .ent-portrait{height:74px}
+/* 翻转与摆动做在立绘上：位置由 world.js 写 transform，
+   摆动若也写 transform 就会把位置顶掉 */
+.ent--player.face-left .ent-portrait{transform:scaleX(-1)}
+.ent .ent-portrait{transition:transform .18s var(--ease)}
+.ent--player.walking .ent-portrait{animation:walkBob .46s ease-in-out infinite}
+.ent--villager.walking .ent-portrait{animation:walkBob .5s ease-in-out infinite}
+@keyframes walkBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+/* 气泡浮在头顶 */
+.ent .wbub{bottom:100%;margin-bottom:6px}
+
+/* 没有立绘的户：一个剪影 + 姓氏朱牌 */
+.ent-silh{
+  display:block;width:26px;height:34px;
+  background:var(--ink);opacity:.8;
+  clip-path:polygon(42% 0,58% 0,64% 16%,78% 26%,72% 40%,68% 40%,70% 100%,30% 100%,32% 40%,28% 40%,22% 26%,36% 16%);
+}
+.ent-seal{
+  position:absolute;left:50%;top:-14px;transform:translateX(-50%);
+  font-family:var(--serif);font-size:10px;line-height:1;
+  color:#fff;background:var(--seal);
+  padding:2px 3px;border-radius:1px;
+  box-shadow:0 2px 5px -2px rgba(40,20,6,.8);
+}
+.ent.near .ent-portrait{filter:drop-shadow(0 0 7px var(--seal)) brightness(1.06)}
+/* 寻人定位到的那一户 */
+.ent.sel .ent-portrait{filter:drop-shadow(0 0 9px var(--seal)) brightness(1.12)}
+.ent.sel .ent-silh{opacity:1;box-shadow:0 0 0 3px rgba(165,49,29,.5)}
+.ent.near .ent-silh{opacity:.95}
+
+/* 走动：沿用旧的小人摆动 */
+.ent--player.walking{animation:walkBob .46s ease-in-out infinite}
+@keyframes walkBob{0%,100%{margin-top:0}50%{margin-top:-3px}}
+
+/* 地点与道具：方牌 */
+.ent--place .ent-badge,.ent--prop .ent-badge{
+  position:absolute;left:0;top:0;
+  display:grid;place-items:center;
+  width:38px;height:38px;
+  background:rgba(246,238,217,.9);
+  border:1px solid rgba(30,26,18,.5);
+  border-radius:var(--r);
+  box-shadow:0 6px 14px -8px rgba(40,28,10,.7);
+  transform:translate(-50%,-50%);
+  transition:transform .25s var(--ease),border-color .25s;
+}
+.ent--place .ent-badge svg{width:21px;height:21px}
+.ent--prop .ent-badge{width:28px;height:28px;opacity:.86}
+.ent--prop .ent-badge svg{width:15px;height:15px}
+.ent:hover .ent-badge{transform:translate(-50%,-50%) translateY(-3px) scale(1.05);border-color:var(--seal)}
+.ent.near .ent-badge{
+  border-color:var(--seal);
+  box-shadow:0 0 0 2px var(--seal),0 10px 18px -8px rgba(40,28,10,.8);
+}
+.ent.locked .ent-badge{opacity:.72;border-style:dashed}
+
+/* 缩小了就藏人：看全局时不必看人头 */
+#figLayer.sparse .ent--villager{display:none}
+
+/* ---------- 名牌（屏幕空间） ---------- */
+.tagLayer{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden}
+.tag{
+  position:absolute;left:0;top:0;
+  font-family:var(--sans);font-size:10.5px;letter-spacing:1.5px;
+  color:var(--ink);white-space:nowrap;
+  background:rgba(246,238,217,.88);
+  border:1px solid rgba(30,26,18,.26);
+  padding:1px 6px;border-radius:var(--r);
+  pointer-events:none;
+}
+.tag.t-seal{background:var(--seal);border-color:var(--seal);color:#fff;letter-spacing:2px}
+.tag.t-place{font-size:11px;letter-spacing:3px;font-weight:700}
+.tag.t-prop{font-size:9.5px;opacity:.9}
+
+/* ---------- 接近提示 ---------- */
+.prompt{
+  position:absolute;left:0;top:0;z-index:13;
+  font-family:var(--sans);font-size:11.5px;letter-spacing:1.6px;
+  color:var(--ink);
+  background:rgba(247,241,226,.95);
+  border:1px solid var(--seal);
+  border-radius:var(--r);
+  padding:4px 10px;
+  box-shadow:0 8px 18px -10px rgba(40,28,10,.85);
+  opacity:0;transition:opacity .16s;
+  pointer-events:none;white-space:nowrap;
+}
+.prompt.on{opacity:1}
+.prompt b{color:var(--seal);font-weight:700}
+
+/* ---------- 缩略舆图 ---------- */
+.maptools{
+  position:absolute;right:14px;bottom:14px;z-index:14;
+  display:flex;flex-direction:column;gap:6px;align-items:flex-end;
+}
+#minimap{
+  width:240px;height:160px;display:block;
+  border:1px solid var(--rule);
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  background:var(--paper-lit);
+  cursor:pointer;
+}
+.mtbtns{display:flex;gap:5px}
+.mt{
+  width:26px;height:26px;padding:0;
+  font-family:var(--sans);font-size:13px;line-height:1;
+  color:var(--ink-2);background:rgba(247,241,226,.92);
+  border:1px solid var(--rule);border-radius:var(--r);
+  cursor:pointer;transition:.18s;
+}
+.mt:hover{color:var(--seal);border-color:var(--seal)}
+.mt.on{color:#fff;background:var(--seal);border-color:var(--seal)}
+
+/* ---------- 铺图提示 ---------- */
+.worldtip{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  z-index:15;
+  font-family:var(--serif);font-size:13px;letter-spacing:4px;color:var(--ink-3);
+  background:rgba(247,241,226,.82);padding:8px 18px;border-radius:var(--r);
+  border:1px solid var(--rule-soft);
+  transition:opacity .4s;
+}
+.worldtip.off{opacity:0;pointer-events:none}
+
+/* ---------- 图签（钉在视口左上角） ---------- */
+.cartouche{
+  position:absolute;left:16px;top:16px;z-index:12;
+  width:212px;height:auto;
+  pointer-events:none;
+}
+
+/* ---------- 前景枯枝：画框，不随相机动 ---------- */
+.branch{
+  position:absolute;right:-5%;top:-7%;width:21%;height:auto;opacity:.16;
+  mix-blend-mode:multiply;pointer-events:none;transform-origin:100% 0;
+  transform:scaleX(-1);
+}
+
+/* ---------- 族属图例（搬进「寻人」浮层） ---------- */
+.lgwrap{border-top:1px solid var(--rule-soft);margin-top:6px}
+.lgwrap h4{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px 5px;
+  font-size:10px;letter-spacing:2px;color:var(--ink-3);font-weight:600;
+  cursor:pointer;user-select:none;
+}
+.lgwrap h4 em{font-style:normal;font-size:9px;letter-spacing:1px;color:var(--ink-3);transition:.3s}
+.lgwrap h4 em.chev{
+  width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid var(--ink-3);transform-origin:50% 42%;transition:transform .3s var(--ease);
+}
+.lgwrap.closed h4 em.chev{transform:rotate(-90deg)}
+.lgwrap.closed .lgbody{display:none}
+.lgwrap .lgbody{padding:4px 10px 8px;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
+
+/* ---------- 幕上的次要按钮（续前月） ---------- */
+.boot .go.alt{
+  margin-top:12px;font-size:12px;letter-spacing:5px;padding:9px 22px 9px 27px;text-indent:5px;
+  background:transparent;border-color:rgba(246,238,217,.26);color:rgba(246,238,217,.8);
+}
+.boot .go.alt:hover{border-color:rgba(246,238,217,.7);color:var(--paper-lit)}
+
+/* ---------- 择人 ---------- */
+.pickwrap{display:grid;grid-template-columns:1fr 300px;gap:18px;min-height:0}
+.picklist{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+  gap:10px;max-height:56vh;overflow:auto;padding-right:6px;
+  align-content:start;
+}
+.pcard{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:8px 4px;cursor:pointer;
+  background:rgba(247,241,226,.5);
+  border:1px solid var(--rule-soft);border-radius:var(--r);
+  transition:.2s var(--ease);
+}
+.pcard:hover{border-color:var(--seal);background:rgba(247,241,226,.9)}
+.pcard.on{border-color:var(--seal);box-shadow:0 0 0 1.5px var(--seal)}
+.pcard img{height:92px;width:auto;max-width:100%;object-fit:contain;
+  filter:drop-shadow(0 3px 4px rgba(60,44,18,.28))}
+.pcard .nm{font-family:var(--serif);font-size:12.5px;letter-spacing:1px;color:var(--ink)}
+.pcard .jb{font-family:var(--sans);font-size:9.5px;color:var(--ink-3)}
+.pcard.on .nm{color:var(--seal)}
+.pickdetail{
+  border-left:1px solid var(--rule-soft);padding-left:16px;
+  font-family:var(--sans);font-size:11px;color:var(--ink-2);line-height:1.85;
+  overflow:auto;max-height:56vh;
+}
+.pickdetail h3{font-family:var(--serif);font-size:19px;letter-spacing:3px;color:var(--ink);margin:0 0 2px}
+.pickdetail .big{font-family:var(--serif);font-size:12px;color:var(--seal);letter-spacing:1px;margin-bottom:8px}
+.pickdetail dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0 0 10px}
+.pickdetail dt{color:var(--ink-3);font-size:10px;letter-spacing:1px}
+.pickdetail dd{margin:0;color:var(--ink)}
+.pickdetail .note{font-size:10.5px;color:var(--ink-3);line-height:1.8;border-top:1px dotted var(--rule-soft);padding-top:8px}
+.pickdetail .figbig{display:block;margin:0 auto 10px;height:190px;width:auto;
+  filter:drop-shadow(0 5px 8px rgba(60,44,18,.3))}
+
+/* ---------- 户册里的人像 ---------- */
+.pfig{
+  height:168px;width:auto;display:block;flex:0 0 auto;
+  filter:drop-shadow(0 4px 7px rgba(60,44,18,.26));
+}
+
+/* ---------- 地点面板 / 案卷面板 ---------- */
+.placeacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.placeacts .hb{font-size:11px;padding:6px 12px}
+.casecard{
+  border:1px solid var(--rule);border-radius:var(--r);
+  background:rgba(247,241,226,.55);padding:12px 14px;margin-bottom:10px;
+}
+.casecard .ct{font-family:var(--serif);font-size:14px;letter-spacing:2px;color:var(--ink);margin-bottom:4px}
+.casecard .cs{font-family:var(--sans);font-size:11px;color:var(--ink-2);line-height:1.8;margin-bottom:10px}
+.casecard .opts{display:flex;flex-direction:column;gap:7px}
+.opt{
+  display:block;width:100%;text-align:left;
+  font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--ink);
+  background:rgba(255,252,244,.7);border:1px solid var(--rule);border-radius:var(--r);
+  padding:8px 11px;cursor:pointer;transition:.18s;
+}
+.opt:hover{border-color:var(--seal);background:rgba(255,252,244,1)}
+.opt .fx{display:block;margin-top:3px;font-size:10.5px;color:var(--seal);letter-spacing:.5px}
+.propline{font-family:var(--serif);font-size:13px;line-height:2;color:var(--ink);margin:0 0 10px}
+.propline .sm{font-family:var(--sans);font-size:11px;color:var(--ink-3);display:block;margin-top:6px}
+
+/* ---------- 移动端 ---------- */
+@media (max-width:900px){
+  .cartouche{width:150px;left:10px;top:10px}
+  .maptools{right:8px;bottom:8px}
+  #minimap{width:140px;height:94px}
+  .pickwrap{grid-template-columns:1fr}
+  .pickdetail{border-left:none;border-top:1px solid var(--rule-soft);padding-left:0;padding-top:10px;max-height:32vh}
+  .picklist{max-height:30vh}
+  .ent-portrait{height:64px}
+  .ent--player .ent-portrait{height:80px}
+  .ent--villager .ent-portrait{height:56px}
+  .prompt{font-size:11px;padding:3px 8px}
+}
+@media (max-width:420px){
+  #minimap{width:112px;height:75px}
+}
